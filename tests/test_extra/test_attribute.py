@@ -50,3 +50,49 @@ class TestAttribute(util.TestCase):
             ["div", "0", "1", "2", "3", "pre", "4", "6"],
             flags=util.HTML5
         )
+
+    def test_attribute_quoted_escaped_newlines(self):
+        """Test attribute with escaped new lines (`\\f`, `\\r`, `\\r\\n`) in quoted strings."""
+
+        self.assert_selector(
+            self.MARKUP,
+            '[id="pr\\\fe"]',
+            ["pre"],
+            flags=util.HTML
+        )
+
+        self.assert_selector(
+            self.MARKUP,
+            "[id='pr\\\re']",
+            ["pre"],
+            flags=util.HTML
+        )
+
+        self.assert_selector(
+            self.MARKUP,
+            '[id="pr\\\r\ne"]',
+            ["pre"],
+            flags=util.HTML
+        )
+
+    def test_bad_attribute_unclused(self):
+        """Test bad attribute fails for syntax error, not timeout error."""
+
+        self.assert_syntax_error_no_timeout('[a="' + ('x' * 300))
+
+    def test_bad_attribute_unclosed_single_quote(self):
+        """Test bad attribute with unclosed single quote fails for syntax error, not timeout error."""
+
+        self.assert_syntax_error_no_timeout("[a='" + ('x' * 300))
+
+    def test_bad_attribute_unclosed_escaped_newlines(self):
+        """Test bad attribute with unclosed quote and escaped new lines fails for syntax error, not timeout error."""
+
+        self.assert_syntax_error_no_timeout('[a="' + ('\\\f' * 100))
+        self.assert_syntax_error_no_timeout("[a='" + ('\\\r' * 100))
+
+    def test_bad_pseudo_class_value_unclosed(self):
+        """Test pseudo-classes with unclosed quoted values fail for syntax error, not timeout error."""
+
+        self.assert_syntax_error_no_timeout(':-soup-contains("' + ('x' * 300))
+        self.assert_syntax_error_no_timeout(":lang('" + ('x' * 300))

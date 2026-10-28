@@ -2,6 +2,8 @@
 import unittest
 import bs4
 import textwrap
+import subprocess
+import sys
 import soupsieve as sv
 import pytest
 
@@ -102,6 +104,41 @@ class TestCase(unittest.TestCase):
         print('----Running Assert Test----')
         with self.assertRaises(exception):
             self.compile_pattern(pattern, namespaces=namespace, custom=custom)
+
+    def assert_syntax_error_no_timeout(self, pattern, timeout=10):
+        """
+        Assert pattern fails with a syntax error and does not time out.
+
+        The pattern is compiled in a separate process so that a pathological pattern
+        (catastrophic backtracking) can be terminated on every platform, as `signal.alarm`
+        is not available on Windows. The pattern is passed via `ascii()` so that control
+        characters survive unchanged.
+        """
+
+        print('----Running Assert No Timeout Test----')
+        print('PATTERN: ', ascii(pattern))
+        code = '\n'.join(
+            [
+                'import soupsieve as sv',
+                'try:',
+                '    sv.compile({!a})'.format(pattern),
+                'except sv.SelectorSyntaxError:',
+                '    raise SystemExit(0)',
+                'raise SystemExit(3)',
+                ''
+            ]
+        )
+        try:
+            result = subprocess.run(
+                [sys.executable, '-'],
+                input=code.encode('ascii'),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=timeout
+            )
+        except subprocess.TimeoutExpired:
+            self.fail('Compiling {!a} did not complete within {} seconds'.format(pattern, timeout))
+        self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8', 'replace'))
 
     def assert_selector(self, markup, selectors, expected_ids, namespaces={}, custom=None, flags=0):
         """Assert selector."""
